@@ -19,7 +19,10 @@
     li.className = 'message-card';
     const meta = document.createElement('div');
     meta.className = 'meta';
-    meta.innerHTML = `<time datetime="${entry.at}">${entry.at}</time>${entry.requestId ? ` · <span>Request-ID: ${escapeHtml(entry.requestId)}</span>` : ''}`;
+    const parts = [`<time datetime="${entry.at}">${entry.at}</time>`];
+    if (entry.clientIp) parts.push(`<span>From: ${escapeHtml(entry.clientIp)}</span>`);
+    if (entry.requestId) parts.push(`<span>Request-ID: ${escapeHtml(entry.requestId)}</span>`);
+    meta.innerHTML = parts.join(' · ');
     const body = document.createElement('pre');
     body.className = 'body' + (entry.body === undefined || entry.body === null || (typeof entry.body === 'object' && Object.keys(entry.body).length === 0) ? ' empty' : '');
     body.textContent = typeof entry.body === 'object'

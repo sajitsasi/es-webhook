@@ -30,13 +30,15 @@ function generateId() {
  * Append a message to the store. Drops oldest if at capacity.
  * @param {object} payload - Parsed JSON body from webhook
  * @param {string} [requestId] - Optional X-Request-Id header
- * @returns {{ id: string, at: string, requestId?: string, body: unknown }}
+ * @param {string} [clientIp] - Optional client IP address
+ * @returns {{ id: string, at: string, requestId?: string, clientIp?: string, body: unknown }}
  */
-function appendMessage(payload, requestId) {
+function appendMessage(payload, requestId, clientIp) {
   const at = new Date().toISOString();
   const id = generateId();
   const entry = { id, at, body: payload };
   if (requestId) entry.requestId = requestId;
+  if (clientIp) entry.clientIp = clientIp;
 
   messages.push(entry);
   if (messages.length > maxMessages) {

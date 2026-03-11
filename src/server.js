@@ -11,6 +11,17 @@ const { broadcast, subscribe } = require('./sse');
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
+// Trust proxy so req.ip is correct when behind a load balancer or reverse proxy
+app.set('trust proxy', true);
+
+function getClientIp(req) {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.ip || req.socket?.remoteAddress || '';
+}
+
 function headersToMap(req) {
   const map = {};
   for (const [k, v] of Object.entries(req.headers)) {
@@ -41,7 +52,8 @@ app.post('/webhook', express.raw({ type: '*/*', limit: '1mb' }), (req, res) => {
     }
   }
   const requestId = req.headers['x-request-id'];
-  const entry = appendMessage(body, requestId);
+  const clientIp = getClientIp(req);
+  const entry = appendMessage(body, requestId, clientIp);
   broadcast(entry);
 
   res.status(200).json({ ok: true, id: entry.id });
