@@ -11,9 +11,6 @@ const { broadcast, subscribe } = require('./sse');
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
-// Parse JSON body for webhook (allow any size within reason)
-app.use(express.json({ limit: '1mb' }));
-
 function headersToMap(req) {
   const map = {};
   for (const [k, v] of Object.entries(req.headers)) {
@@ -22,25 +19,40 @@ function headersToMap(req) {
   return map;
 }
 
-// Health check (no auth)
-app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'ok' });
-});
-
-// Webhook: accept Elastic POST
-app.post('/webhook', (req, res) => {
+// Webhook: accept Elastic POST — capture raw body so we get data even when Content-Type is wrong or body is empty
+app.post('/webhook', express.raw({ type: '*/*', limit: '1mb' }), (req, res) => {
   const headers = headersToMap(req);
   const auth = validateWebhookAuth(headers);
   if (!auth.valid) {
     return res.status(401).json({ error: auth.error });
   }
 
-  const body = req.body !== undefined && req.body !== null ? req.body : {};
+  let body;
+  const raw = req.body && req.body.length ? req.body.toString('utf8') : '';
+  if (!raw.trim()) {
+    body = {
+              _hint: 'Empty body. In Kibana: edit your Webhook connector and set the Body field to a JSON template, e.g. {"rule":"{{rule.name}}","date":"{{date}}","alerts":{{alerts.all.data}}}',
+            };
+  } else {
+    try {
+      body = JSON.parse(raw);
+    } catch (e) {
+      body = { _raw: raw.slice(0, 2000), _parseError: 'Body is not valid JSON' };
+    }
+  }
   const requestId = req.headers['x-request-id'];
   const entry = appendMessage(body, requestId);
   broadcast(entry);
 
   res.status(200).json({ ok: true, id: entry.id });
+});
+
+// Parse JSON for any other future POST routes
+app.use(express.json({ limit: '1mb' }));
+
+// Health check (no auth)
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok' });
 });
 
 // SSE stream of new messages (optional read auth)
