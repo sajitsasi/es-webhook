@@ -114,6 +114,22 @@ app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`ES Webhook server listening on port ${PORT}`);
 });
+
+function shutdown(signal) {
+  console.log(`${signal} received, closing server…`);
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+  // Force exit if connections (e.g. SSE) keep the server open
+  setTimeout(() => {
+    console.error('Forced exit after timeout');
+    process.exit(1);
+  }, 5000).unref();
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
