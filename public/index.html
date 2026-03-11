@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ES Webhook — Messages</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>ES Webhook</h1>
+    <p class="subtitle">Messages from Elasticsearch actions</p>
+    <div class="status">
+      <span id="status-dot" class="dot"></span>
+      <span id="status-text">Connecting…</span>
+    </div>
+  </header>
+  <main>
+    <section class="controls">
+      <button type="button" id="btn-clear">Clear list</button>
+      <label>
+        <input type="checkbox" id="use-polling" />
+        Use polling instead of SSE
+      </label>
+    </section>
+    <ul id="message-list"></ul>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
