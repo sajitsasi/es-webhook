@@ -4,12 +4,15 @@
  */
 
 const express = require('express');
+const fs = require('fs');
 const path = require('path');
 const { validateWebhookAuth, validateReadAuth, appendMessage, getMessages } = require('./core');
 const { broadcast, subscribe } = require('./sse');
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
+const LOG_DIR = process.env.LOG_DIR || '';
+const LOG_FILE = 'webhook.log';
 
 // Trust proxy so req.ip is correct when behind a load balancer or reverse proxy
 app.set('trust proxy', true);
@@ -35,6 +38,16 @@ function headersToMap(req) {
     if (v !== undefined) map[k.toLowerCase()] = v;
   }
   return map;
+}
+
+function writeRequestLog(entry) {
+  if (!LOG_DIR) return;
+  const logPath = path.join(LOG_DIR, LOG_FILE);
+  const line = JSON.stringify(entry) + '\n';
+  fs.mkdirSync(LOG_DIR, { recursive: true });
+  fs.appendFile(logPath, line, (err) => {
+    if (err) console.error('Request log write failed:', err.message);
+  });
 }
 
 // Webhook: accept Elastic POST — capture raw body so we get data even when Content-Type is wrong or body is empty
@@ -69,6 +82,7 @@ app.post('/webhook', express.raw({ type: '*/*', limit: '1mb' }), (req, res) => {
   const clientIp = getClientIp(req);
   const entry = appendMessage(body, requestId, clientIp);
   broadcast(entry);
+  writeRequestLog(entry);
 
   res.status(200).json({ ok: true, id: entry.id });
 });

@@ -32,6 +32,28 @@ npm start
 | `WEBHOOK_SECRET` | Optional. If set, POST /webhook must send this as `Authorization: Bearer <secret>` or `X-Webhook-Secret: <secret>`, or Basic auth password. |
 | `READ_TOKEN` | Optional. If set, GET /events and GET /messages require `?token=<token>` or `Authorization: Bearer <token>`. |
 | `MAX_MESSAGES` | Max messages kept in memory (default `500`). |
+| `LOG_DIR` | If set, each webhook request is appended as one JSON line to `<LOG_DIR>/webhook.log`. Leave unset to disable file logging. Default in Docker: `/app/logs`. |
+
+### Request logging and volume mount
+
+To persist request logs on the host, mount a directory into the container’s log path:
+
+```bash
+docker run -p 3000:3000 -v /path/on/host/logs:/app/logs es-webhook
+```
+
+Example on Linux/macOS with a local `./logs` folder:
+
+```bash
+mkdir -p ./logs
+docker run -p 3000:3000 -v "$(pwd)/logs:/app/logs" es-webhook
+```
+
+Each webhook request is written as one JSON line to `webhook.log` (e.g. `./logs/webhook.log`). To use a different directory inside the container, set `LOG_DIR`:
+
+```bash
+docker run -p 3000:3000 -v "$(pwd)/logs:/mnt/webhook-logs" -e LOG_DIR=/mnt/webhook-logs es-webhook
+```
 
 ## Endpoints
 

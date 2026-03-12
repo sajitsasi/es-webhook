@@ -10,4 +10,6 @@ COPY . .
 EXPOSE 3000
 
 ENV PORT=3000
+ENV LOG_DIR=/app/logs
+RUN mkdir -p /app/logs
 CMD ["node", "src/server.js"]
