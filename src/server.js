@@ -16,10 +16,17 @@ app.set('trust proxy', true);
 
 function getClientIp(req) {
   const forwarded = req.headers['x-forwarded-for'];
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
+  if (forwarded && typeof forwarded === 'string') {
+    const ip = forwarded.split(',')[0].trim();
+    if (ip) return normalizeIp(ip);
   }
-  return req.ip || req.socket?.remoteAddress || '';
+  const ip = req.ip || req.socket?.remoteAddress || req.connection?.remoteAddress || '';
+  return ip ? normalizeIp(ip) : '(unknown)';
+}
+
+function normalizeIp(ip) {
+  if (typeof ip !== 'string') return ip;
+  return ip.replace(/^::ffff:/i, '');
 }
 
 function headersToMap(req) {
@@ -48,7 +55,14 @@ app.post('/webhook', express.raw({ type: '*/*', limit: '1mb' }), (req, res) => {
     try {
       body = JSON.parse(raw);
     } catch (e) {
-      body = { _raw: raw.slice(0, 2000), _parseError: 'Body is not valid JSON' };
+      // Unquoted Mustache placeholders (e.g. {{alerts.all.data}}) are invalid JSON; replace with null and retry
+      const withPlaceholdersReplaced = raw.replace(/:\s*\{\{[^}]*\}\}/g, ': null');
+      try {
+        body = JSON.parse(withPlaceholdersReplaced);
+        body._templateHint = 'Some values were not substituted (null). When Kibana runs the rule, real data will appear.';
+      } catch (e2) {
+        body = { _raw: raw.slice(0, 2000), _parseError: 'Body is not valid JSON' };
+      }
     }
   }
   const requestId = req.headers['x-request-id'];
