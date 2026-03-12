@@ -11,8 +11,11 @@ const { broadcast, subscribe } = require('./sse');
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
-const LOG_DIR = process.env.LOG_DIR || '';
 const LOG_FILE = 'webhook.log';
+const LOG_DIR = (() => {
+  const dir = process.env.LOG_DIR || path.join(process.cwd(), 'logs');
+  return path.isAbsolute(dir) ? dir : path.resolve(process.cwd(), dir);
+})();
 
 // Trust proxy so req.ip is correct when behind a load balancer or reverse proxy
 app.set('trust proxy', true);
@@ -41,12 +44,18 @@ function headersToMap(req) {
 }
 
 function writeRequestLog(entry) {
-  if (!LOG_DIR) return;
   const logPath = path.join(LOG_DIR, LOG_FILE);
   const line = JSON.stringify(entry) + '\n';
-  fs.mkdirSync(LOG_DIR, { recursive: true });
+  try {
+    fs.mkdirSync(LOG_DIR, { recursive: true });
+  } catch (err) {
+    console.error('Request log mkdir failed:', LOG_DIR, err.message);
+    return;
+  }
   fs.appendFile(logPath, line, (err) => {
-    if (err) console.error('Request log write failed:', err.message);
+    if (err) {
+      console.error('Request log write failed:', logPath, err.code || err.message, '- check directory permissions');
+    }
   });
 }
 
@@ -144,6 +153,7 @@ app.get('/', (_req, res) => {
 
 const server = app.listen(PORT, () => {
   console.log(`ES Webhook server listening on port ${PORT}`);
+  console.log(`Request log: ${path.join(LOG_DIR, LOG_FILE)}`);
 });
 
 function shutdown(signal) {

@@ -55,6 +55,8 @@ Each webhook request is written as one JSON line to `webhook.log` (e.g. `./logs/
 docker run -p 3000:3000 -v "$(pwd)/logs:/mnt/webhook-logs" -e LOG_DIR=/mnt/webhook-logs es-webhook
 ```
 
+**If no data appears in the log file:** The container runs as a non-root user. Ensure the mounted directory is writable, e.g. `chmod 777 ./logs` before running, or run with your user: `docker run ... --user $(id -u):$(id -g) -e LOG_DIR=/app/logs -v "$(pwd)/logs:/app/logs" es-webhook`. Check container output for "Request log write failed" or "Request log mkdir failed".
+
 ## Endpoints
 
 - **POST /webhook** — Receive Elastic action payload (JSON). Optional auth via `WEBHOOK_SECRET`.
